@@ -1,9 +1,9 @@
 {
   "build": {
     "distDir": "../dist",
-    "devPath": "http://localhost:4000",
-    "beforeDevCommand": "",
-    "beforeBuildCommand": ""
+    "devPath": "http://localhost:3000",
+    "beforeDevCommand": "cd client-elm && PORT=3000 elm-app start --no-browser",
+    "beforeBuildCommand": "cd client-elm && elm-app-build"
   },
   "ctx": {},
   "tauri": {
