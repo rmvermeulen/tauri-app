@@ -11,4 +11,9 @@ pub enum Cmd {
     callback: String,
     error: String,
   },
+  GetFileList {
+    path: String,
+    callback: String,
+    error: String,
+  },
 }

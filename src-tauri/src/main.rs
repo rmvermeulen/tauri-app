@@ -28,6 +28,33 @@ fn main() {
                 error,
               );
             }
+            GetFileList {
+              path,
+              callback,
+              error,
+            } => {
+              println!("elm:getFileList -> {:?}", path);
+              tauri::execute_promise(
+                _webview,
+                move || {
+                  use glob::glob;
+
+                  let results: Vec<String> = glob(&path)
+                    .expect("Failed to read glob pattern")
+                    .filter_map(|result| {
+                      result
+                        .ok()
+                        .map(|buffer| buffer.into_os_string().into_string().ok())
+                    })
+                    .filter_map(|item| item)
+                    .collect();
+
+                  Ok(results)
+                },
+                callback,
+                error,
+              );
+            }
           }
           Ok(())
         }

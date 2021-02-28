@@ -1,0 +1,17 @@
+{
+  "folders": [
+    {
+      "name": "elm",
+      "path": "."
+    },
+    {
+      "name": "project root",
+      "path": ".."
+    },
+    {
+      "name": "rust",
+      "path": "../src-tauri"
+    }
+  ],
+  "settings": {}
+}

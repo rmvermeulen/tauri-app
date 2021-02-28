@@ -12,7 +12,16 @@ import Framework.Color as Color
 port sendMessage : String -> Cmd msg
 
 
+port getFileList : String -> Cmd msg
+
+
 port receiveMessage : (String -> msg) -> Sub msg
+
+
+port receiveFileList : (List String -> msg) -> Sub msg
+
+
+port handleError : (String -> msg) -> Sub msg
 
 
 
@@ -22,6 +31,8 @@ port receiveMessage : (String -> msg) -> Sub msg
 type alias Model =
     { mMessage : Maybe String
     , searchTerm : String
+    , files : List String
+    , mError : Maybe String
     }
 
 
@@ -45,7 +56,15 @@ delayCmd =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { mMessage = Nothing, searchTerm = "" }, sendMessage "Elm::init()" )
+    ( { mMessage = Nothing
+      , searchTerm = ""
+      , files = []
+      , mError = Nothing
+      }
+    , Cmd.batch
+        [ sendMessage "Elm::init()"
+        ]
+    )
 
 
 
@@ -54,8 +73,9 @@ init =
 
 type Msg
     = ReceiveMessage String
-    | ScheduleMessage String
     | SetSearchTerm String
+    | ReceiveFileList (List String)
+    | HandleError String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -69,17 +89,20 @@ update msg model =
             simply
                 { model | mMessage = Just message }
 
-        ScheduleMessage message ->
-            ( model, Cmd.none )
-
         SetSearchTerm term ->
             let
                 _ =
                     Debug.log "scheduled" term
             in
             ( model |> setSearchTerm term
-            , sendMessage <| "searching for " ++ term
+            , getFileList term
             )
+
+        ReceiveFileList files ->
+            simply { model | files = files }
+
+        HandleError string ->
+            simply { model | mError = Just string }
 
 
 
@@ -123,6 +146,8 @@ view model =
             , text = model.searchTerm
             , placeholder = Nothing
             }
+        , model.files |> Debug.toString |> text |> List.singleton |> paragraph []
+        , model.mError |> Maybe.withDefault "No error!" |> text
         , exampleFileTree
             |> viewTree
             |> el [ padding 16, Background.color Color.muted ]
@@ -130,7 +155,16 @@ view model =
 
 
 
----- PROGRAM ----
+---- SUBSCRIPTIONS ----
+
+
+subscriptions : Model -> Sub Msg
+subscriptions _ =
+    Sub.batch
+        [ receiveMessage ReceiveMessage
+        , receiveFileList ReceiveFileList
+        , handleError HandleError
+        ]
 
 
 main : Program () Model Msg
@@ -139,5 +173,5 @@ main =
         { view = \model -> layout [] <| view model
         , init = \_ -> init
         , update = update
-        , subscriptions = \_ -> Sub.batch [ receiveMessage ReceiveMessage ]
+        , subscriptions = subscriptions
         }
