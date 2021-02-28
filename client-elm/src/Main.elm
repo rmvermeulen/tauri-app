@@ -3,7 +3,10 @@ port module Main exposing (..)
 import Browser
 import Delay exposing (TimeUnit(..))
 import Element exposing (..)
+import Element.Background as Background
 import Element.Input as Input
+import FileTree exposing (Tree(..), viewTree)
+import Framework.Color as Color
 
 
 port sendMessage : String -> Cmd msg
@@ -83,6 +86,28 @@ update msg model =
 ---- VIEW ----
 
 
+exampleFileTree : Tree
+exampleFileTree =
+    Folder "Root"
+        [ Folder "Nested"
+            [ File "foo" (Just "lorem ipsum etc")
+            , File "foo"
+                (Just """
+exampleFileTree : Tree
+exampleFileTree =
+    Folder "Root"
+        [ Folder "Nested" [
+            File "foo" (Just "lorem ipsum etc"),
+            File "foo" (Just "lorem ipsum etc"),
+        ]
+        , File ".gitignore" (Just "node_modules")
+        ]
+""")
+            ]
+        , File ".gitignore" (Just "node_modules")
+        ]
+
+
 view : Model -> Element Msg
 view model =
     column []
@@ -98,6 +123,9 @@ view model =
             , text = model.searchTerm
             , placeholder = Nothing
             }
+        , exampleFileTree
+            |> viewTree
+            |> el [ padding 16, Background.color Color.muted ]
         ]
 
 
