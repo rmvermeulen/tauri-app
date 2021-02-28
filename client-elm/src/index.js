@@ -1,7 +1,7 @@
 import "./main.css";
 import { Elm } from "./Main.elm";
 import * as serviceWorker from "./serviceWorker";
-import { invoke, promisified } from "tauri/api/tauri";
+import { promisified } from "tauri/api/tauri";
 
 // then call it:
 const app = Elm.Main.init({

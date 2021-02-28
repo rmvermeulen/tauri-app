@@ -4,9 +4,11 @@ import Browser
 import Delay exposing (TimeUnit(..))
 import Element exposing (..)
 import Element.Background as Background
+import Element.Font as Font
 import Element.Input as Input
 import FileTree exposing (Tree(..), viewTree)
 import Framework.Color as Color
+import Framework.Spinner exposing (Spinner(..), spinner)
 
 
 port sendMessage : String -> Cmd msg
@@ -28,10 +30,16 @@ port handleError : (String -> msg) -> Sub msg
 ---- MODEL ----
 
 
+type Files
+    = None
+    | Loading
+    | Loaded (List String)
+
+
 type alias Model =
     { mMessage : Maybe String
     , searchTerm : String
-    , files : List String
+    , files : Files
     , mError : Maybe String
     }
 
@@ -58,7 +66,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { mMessage = Nothing
       , searchTerm = ""
-      , files = []
+      , files = None
       , mError = Nothing
       }
     , Cmd.batch
@@ -99,7 +107,7 @@ update msg model =
             )
 
         ReceiveFileList files ->
-            simply { model | files = files }
+            simply { model | files = Loaded files }
 
         HandleError string ->
             simply { model | mError = Just string }
@@ -146,8 +154,26 @@ view model =
             , text = model.searchTerm
             , placeholder = Nothing
             }
-        , model.files |> Debug.toString |> text |> List.singleton |> paragraph []
-        , model.mError |> Maybe.withDefault "No error!" |> text
+        , case model.files of
+            None ->
+                none
+
+            Loading ->
+                spinner ThreeCircles 24 Color.black
+
+            Loaded files ->
+                if List.isEmpty files then
+                    el [ Font.italic ] <| text "no results."
+
+                else
+                    files
+                        |> Debug.toString
+                        |> text
+                        |> List.singleton
+                        |> paragraph []
+        , model.mError
+            |> Maybe.map text
+            |> Maybe.withDefault none
         , exampleFileTree
             |> viewTree
             |> el [ padding 16, Background.color Color.muted ]
