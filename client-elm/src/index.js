@@ -17,7 +17,7 @@ if ("ports" in app) {
     const { sendMessage, receiveMessage } = ports;
     sendMessage.subscribe((message) => {
       console.log("SENDING", message);
-      rustMessage({ cmd: "doSomething", message }, receiveMessage.send);
+      rustMessage({ cmd: "message", message }, receiveMessage.send);
     });
   }
   if ("getFileList" in ports && "receiveFileList" in ports) {

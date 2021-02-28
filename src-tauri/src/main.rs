@@ -14,12 +14,12 @@ fn main() {
         Err(e) => Err(e.to_string()),
         Ok(command) => {
           match command {
-            DoSomething {
+            Message {
               message,
               callback,
               error,
             } => {
-              println!("elm:doSomething -> {:?}", message);
+              println!("elm:message -> {:?}", message);
               count += 1;
               tauri::execute_promise(
                 _webview,
