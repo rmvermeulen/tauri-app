@@ -7,12 +7,17 @@ import Element.Font as Font
 import Framework.Color as Color
 
 
-type Tree
+fromPaths : List String -> FileTree
+fromPaths files =
+    Folder "root" []
+
+
+type FileTree
     = File String (Maybe String)
-    | Folder String (List Tree)
+    | Folder String (List FileTree)
 
 
-viewTree : Tree -> Element msg
+viewTree : FileTree -> Element msg
 viewTree tree =
     let
         maxLength =

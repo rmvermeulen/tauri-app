@@ -7,9 +7,10 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
 import Element.Input as Input
-import FileTree exposing (Tree(..), viewTree)
+import FileTree exposing (FileTree(..), viewTree)
 import Framework.Color as Color
 import Framework.Spinner exposing (Spinner(..), spinner)
+import List.Extra exposing (groupsOf)
 
 
 port sendMessage : String -> Cmd msg
@@ -34,7 +35,7 @@ port handleError : (String -> msg) -> Sub msg
 type Files
     = None
     | Loading
-    | Loaded (List String)
+    | Loaded (List String) FileTree
 
 
 type alias Model =
@@ -94,16 +95,16 @@ delayCmd =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { globDebouncer = Debounce.init
-      , mMessage = Nothing
-      , searchTerm = ""
-      , files = None
-      , mError = Nothing
-      }
-    , Cmd.batch
-        [ sendMessage "Elm::init()"
-        ]
-    )
+    let
+        empty =
+            { globDebouncer = Debounce.init
+            , mMessage = Nothing
+            , searchTerm = ""
+            , files = None
+            , mError = Nothing
+            }
+    in
+    update (SetSearchTerm "*") empty
 
 
 
@@ -141,9 +142,13 @@ update msg model =
             , cmd
             )
 
-        ReceiveFileList files ->
+        ReceiveFileList paths ->
+            let
+                tree =
+                    FileTree.fromPaths paths
+            in
             model
-                |> setFiles (Loaded files)
+                |> setFiles (Loaded paths tree)
                 |> simply
 
         HandleError string ->
@@ -164,7 +169,7 @@ update msg model =
 ---- VIEW ----
 
 
-exampleFileTree : Tree
+exampleFileTree : FileTree
 exampleFileTree =
     Folder "Root"
         [ Folder "Nested"
@@ -208,22 +213,23 @@ view model =
             Loading ->
                 spinner ThreeCircles 24 Color.black
 
-            Loaded files ->
+            Loaded files tree ->
                 if List.isEmpty files then
                     el [ Font.italic ] <| text "no results."
 
                 else
-                    files
-                        |> Debug.toString
-                        |> text
-                        |> List.singleton
-                        |> paragraph []
+                    column [ Font.family [ Font.monospace ] ]
+                        [ files
+                            |> List.sortBy String.length
+                            |> List.map text
+                            |> column []
+                        , tree
+                            |> viewTree
+                            |> el [ padding 16, Background.color Color.muted ]
+                        ]
         , model.mError
             |> Maybe.map text
             |> Maybe.withDefault none
-        , exampleFileTree
-            |> viewTree
-            |> el [ padding 16, Background.color Color.muted ]
         ]
 
 
