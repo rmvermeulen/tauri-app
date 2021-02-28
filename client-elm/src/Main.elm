@@ -1,7 +1,7 @@
 port module Main exposing (..)
 
 import Browser
-import Debounce
+import Debounce exposing (Debounce)
 import Delay exposing (TimeUnit(..))
 import Element exposing (..)
 import Element.Background as Background
@@ -38,7 +38,7 @@ type Files
 
 
 type alias Model =
-    { globDebouncer : Debounce.Debounce String
+    { globDebouncer : Debounce String
     , mMessage : Maybe String
     , searchTerm : String
     , files : Files
@@ -58,6 +58,15 @@ debounceConfig =
     }
 
 
+updateDebouncer : Debounce.Msg -> Debounce String -> ( Debounce String, Cmd Msg )
+updateDebouncer =
+    Debounce.update debounceConfig (Debounce.takeLast getFileList)
+
+
+
+---- setters ----
+
+
 setMessage : Maybe String -> Model -> Model
 setMessage mMessage model =
     { model | mMessage = mMessage }
@@ -68,7 +77,7 @@ setSearchTerm searchTerm model =
     { model | searchTerm = searchTerm }
 
 
-setGlobDebouncer : Debounce.Debounce String -> Model -> Model
+setGlobDebouncer : Debounce String -> Model -> Model
 setGlobDebouncer globDebouncer model =
     { model | globDebouncer = globDebouncer }
 
@@ -78,10 +87,7 @@ setFiles files model =
     { model | files = files }
 
 
-
--- delayCmd :
-
-
+delayCmd : msg -> Cmd msg
 delayCmd =
     Delay.after 500 Millisecond
 
@@ -145,9 +151,6 @@ update msg model =
 
         DebounceMsg dMsg ->
             let
-                updateDebouncer =
-                    Debounce.update debounceConfig (Debounce.takeLast getFileList)
-
                 ( globDebouncer, cmd ) =
                     updateDebouncer dMsg model.globDebouncer
             in
