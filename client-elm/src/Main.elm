@@ -1,8 +1,9 @@
 port module Main exposing (..)
 
 import Browser
-import Html exposing (Html, div, h1, img, text)
-import Html.Attributes exposing (src)
+import Delay exposing (TimeUnit(..))
+import Element exposing (..)
+import Element.Input as Input
 
 
 port sendMessage : String -> Cmd msg
@@ -16,12 +17,32 @@ port receiveMessage : (String -> msg) -> Sub msg
 
 
 type alias Model =
-    {}
+    { mMessage : Maybe String
+    , searchTerm : String
+    }
+
+
+setMessage : Maybe String -> Model -> Model
+setMessage mMessage model =
+    { model | mMessage = mMessage }
+
+
+setSearchTerm : String -> Model -> Model
+setSearchTerm searchTerm model =
+    { model | searchTerm = searchTerm }
+
+
+
+-- delayCmd :
+
+
+delayCmd =
+    Delay.after 500 Millisecond
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( {}, Cmd.batch [ sendMessage "Hello from elm!" ] )
+    ( { mMessage = Nothing, searchTerm = "" }, sendMessage "Elm::init()" )
 
 
 
@@ -29,23 +50,54 @@ init =
 
 
 type Msg
-    = NoOp
+    = ReceiveMessage String
+    | ScheduleMessage String
+    | SetSearchTerm String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    ( model, Cmd.none )
+    let
+        simply m =
+            ( m, Cmd.none )
+    in
+    case msg of
+        ReceiveMessage message ->
+            simply
+                { model | mMessage = Just message }
+
+        ScheduleMessage message ->
+            ( model, Cmd.none )
+
+        SetSearchTerm term ->
+            let
+                _ =
+                    Debug.log "scheduled" term
+            in
+            ( model |> setSearchTerm term
+            , sendMessage <| "searching for " ++ term
+            )
 
 
 
 ---- VIEW ----
 
 
-view : Model -> Html Msg
+view : Model -> Element Msg
 view model =
-    div []
-        [ img [ src "/logo.svg" ] []
-        , h1 [] [ text "Your Elm+Rust App is working!" ]
+    column []
+        [ case model.mMessage of
+            Just message ->
+                text <| "Received @message: '" ++ message ++ "'"
+
+            Nothing ->
+                text "No messages yet"
+        , Input.text []
+            { label = Input.labelLeft [] <| text "search"
+            , onChange = SetSearchTerm
+            , text = model.searchTerm
+            , placeholder = Nothing
+            }
         ]
 
 
@@ -56,8 +108,8 @@ view model =
 main : Program () Model Msg
 main =
     Browser.element
-        { view = view
+        { view = \model -> layout [] <| view model
         , init = \_ -> init
         , update = update
-        , subscriptions = always Sub.none
+        , subscriptions = \_ -> Sub.batch [ receiveMessage ReceiveMessage ]
         }
