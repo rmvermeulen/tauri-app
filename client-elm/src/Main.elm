@@ -53,7 +53,7 @@ type alias Model =
 
 debounceConfig : Debounce.Config Msg
 debounceConfig =
-    { strategy = Debounce.later 1000
+    { strategy = Debounce.later 250
     , transform = DebounceMsg
     }
 
@@ -71,6 +71,11 @@ setSearchTerm searchTerm model =
 setGlobDebouncer : Debounce.Debounce String -> Model -> Model
 setGlobDebouncer globDebouncer model =
     { model | globDebouncer = globDebouncer }
+
+
+setFiles : Files -> Model -> Model
+setFiles files model =
+    { model | files = files }
 
 
 
@@ -126,11 +131,14 @@ update msg model =
             ( model
                 |> setSearchTerm term
                 |> setGlobDebouncer globDebouncer
+                |> setFiles Loading
             , cmd
             )
 
         ReceiveFileList files ->
-            simply { model | files = Loaded files }
+            model
+                |> setFiles (Loaded files)
+                |> simply
 
         HandleError string ->
             simply { model | mError = Just string }
@@ -143,7 +151,10 @@ update msg model =
                 ( globDebouncer, cmd ) =
                     updateDebouncer dMsg model.globDebouncer
             in
-            ( { model | globDebouncer = globDebouncer }, cmd )
+            ( model
+                |> setGlobDebouncer globDebouncer
+            , cmd
+            )
 
 
 
