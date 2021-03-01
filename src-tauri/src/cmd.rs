@@ -6,13 +6,13 @@ pub enum Cmd {
   // your custom commands
   // multiple arguments are allowed
   // note that rename_all = "camelCase": you need to use "myCustomCommand" on JS
-  Message {
-    message: String,
+  GetFileList {
+    path: String,
     callback: String,
     error: String,
   },
-  GetFileList {
-    path: String,
+  GetItems {
+    id: String,
     callback: String,
     error: String,
   },

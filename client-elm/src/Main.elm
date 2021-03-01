@@ -14,13 +14,13 @@ import Json.Decode as Decode
 import List.Extra exposing (groupsOf)
 
 
-port sendMessage : String -> Cmd msg
-
-
 port getFileList : String -> Cmd msg
 
 
-port receiveMessage : (String -> msg) -> Sub msg
+port getResourceItems : ( String, Int ) -> Cmd msg
+
+
+port receiveResourceId : (String -> msg) -> Sub msg
 
 
 port receiveFileList : (List String -> msg) -> Sub msg
@@ -35,7 +35,8 @@ port handleError : (String -> msg) -> Sub msg
 
 type Files
     = None
-    | Loading
+    | Searching
+    | Loading String (List String)
     | Loaded (List String) FileTree
 
 
@@ -111,6 +112,7 @@ type Msg
     = ReceiveMessage String
     | SetSearchTerm String
     | ReceiveFileList (List String)
+    | ReceiveResourceId String
     | HandleError String
     | DebounceMsg Debounce.Msg
 
@@ -138,7 +140,7 @@ update msg model =
             ( model
                 |> setSearchTerm term
                 |> setGlobDebouncer globDebouncer
-                |> setFiles Loading
+                |> setFiles Searching
             , cmd
             )
 
@@ -150,6 +152,12 @@ update msg model =
             model
                 |> setFiles (Loaded paths tree)
                 |> simply
+
+        ReceiveResourceId id ->
+            ( model
+                |> setFiles (Loading id [])
+            , delayCmd <| getResourceItems (id, 5)
+            )
 
         HandleError string ->
             simply { model | mError = Just string }
@@ -210,8 +218,11 @@ view model =
             None ->
                 none
 
-            Loading ->
+            Searching ->
                 spinner ThreeCircles 24 Color.black
+
+            Loading uuid incompleteResults ->
+                spinner ThreeCircles 24 Color.green
 
             Loaded files tree ->
                 if List.isEmpty files then
@@ -240,8 +251,8 @@ view model =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ receiveMessage ReceiveMessage
-        , receiveFileList ReceiveFileList
+        [ receiveFileList ReceiveFileList
+        , receiveResourceId ReceiveResourceId
         , handleError HandleError
         ]
 

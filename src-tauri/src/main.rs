@@ -2,31 +2,34 @@
   all(not(debug_assertions), target_os = "windows"),
   windows_subsystem = "windows"
 )]
+use anyhow::anyhow;
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::Mutex;
+use uuid::Uuid;
 
 mod cmd;
 
 fn main() {
-  let mut count = 0;
+  let cache = Arc::new(Mutex::new(HashMap::new()));
   tauri::AppBuilder::new()
     .invoke_handler(move |_webview, arg| {
+      let mut cache = cache.clone();
       use cmd::Cmd::*;
       match serde_json::from_str(arg) {
         Err(e) => Err(e.to_string()),
         Ok(command) => {
           match command {
-            Message {
-              message,
+            GetItems {
+              id,
               callback,
               error,
             } => {
-              println!("elm:message -> {:?}", message);
-              count += 1;
-              tauri::execute_promise(
-                _webview,
-                move || Ok(format!("received! greetings {} from rust!", count)),
-                callback,
-                error,
-              );
+              let fetchItems = move || {
+                let results: Vec<String> = vec![];
+                Ok(results)
+              };
+              tauri::execute_promise(_webview, fetchItems, callback, error);
             }
             GetFileList {
               path,
@@ -48,8 +51,14 @@ fn main() {
                     })
                     .filter_map(|item| item)
                     .collect();
-
-                  Ok(results)
+                  let id = Uuid::new_v4();
+                  match cache.lock() {
+                    Ok(mut map) => {
+                      map.insert(id, results);
+                      Ok(id.to_string())
+                    }
+                    Err(e) => Err(anyhow!("PoisonError: {}", e)),
+                  }
                 },
                 callback,
                 error,

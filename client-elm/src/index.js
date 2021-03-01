@@ -9,22 +9,30 @@ const app = Elm.Main.init({
 });
 if ("ports" in app) {
   const { ports } = app;
-  const handleError =
-    "handleError" in ports ? ports.handleError.send : console.error;
+  // const handleError =
+  //   "handleError" in ports ? ports.handleError.send : console.error;
+  const handleError = ({ message }) => console.error(message);
+
   const rustMessage = (msg, cb) => promisified(msg).then(cb).catch(handleError);
 
   if ("sendMessage" in ports && "receiveMessage" in ports) {
     const { sendMessage, receiveMessage } = ports;
     sendMessage.subscribe((message) => {
-      console.log("SENDING", message);
       rustMessage({ cmd: "message", message }, receiveMessage.send);
     });
+  } else {
+    console.error("Missing Message ports");
   }
-  if ("getFileList" in ports && "receiveFileList" in ports) {
-    const { getFileList, receiveFileList } = ports;
-    getFileList.subscribe((path) =>
-      rustMessage({ cmd: "getFileList", path }, receiveFileList.send)
-    );
+  if ("getFileList" in ports && "receiveResourceId" in ports) {
+    const { getFileList, receiveResourceId } = ports;
+    getFileList.subscribe((path) => {
+      rustMessage({ cmd: "getFileList", path }, (uuid) => {
+        console.log("UUID", uuid);
+        receiveResourceId.send(uuid);
+      });
+    });
+  } else {
+    console.error("Missing FileList ports");
   }
 }
 
