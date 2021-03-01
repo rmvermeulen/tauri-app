@@ -26,18 +26,11 @@ port receiveMessage : (String -> msg) -> Sub msg
 port receiveFileList : (List String -> msg) -> Sub msg
 
 
-port receiveFileTree : (Decode.Value -> msg) -> Sub msg
-
-
 port handleError : (String -> msg) -> Sub msg
 
 
 
 ---- MODEL ----
-
-
-type alias FileInfo =
-    { path : String, dir : Bool }
 
 
 type Files
@@ -118,7 +111,6 @@ type Msg
     = ReceiveMessage String
     | SetSearchTerm String
     | ReceiveFileList (List String)
-    | ReceiveFileList Decode.Value
     | HandleError String
     | DebounceMsg Debounce.Msg
 
@@ -158,13 +150,6 @@ update msg model =
             model
                 |> setFiles (Loaded paths tree)
                 |> simply
-
-        ReceiveFileTree json ->
-            let
-                _ =
-                    Debug.log "file-tree" (Debug.toString json)
-            in
-            simply model
 
         HandleError string ->
             simply { model | mError = Just string }
@@ -257,7 +242,6 @@ subscriptions _ =
     Sub.batch
         [ receiveMessage ReceiveMessage
         , receiveFileList ReceiveFileList
-        , receiveFileTree ReceiveFileTree
         , handleError HandleError
         ]
 

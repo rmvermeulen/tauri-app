@@ -74,35 +74,42 @@ viewTree tree =
     let
         maxLength =
             32
+
+        indent =
+            paddingXY 10 0
+
+        indented =
+            el [ indent ]
     in
     case tree of
         File name Nothing ->
-            text <| name ++ " ()"
+            indented <| text <| name ++ " ()"
 
         File name (Just content) ->
-            row [ spacing 10 ]
-                [ text name
-                , el [ padding 4, Background.color Color.yellow, Border.rounded 4 ] <|
-                    if String.length content > maxLength then
-                        content
-                            |> String.left maxLength
-                            |> (\s -> s ++ "...")
-                            |> text
-                            |> el [ Font.italic ]
+            indented <|
+                row [ spacing 10 ]
+                    [ text name
+                    , el [ padding 4, Background.color Color.yellow, Border.rounded 4 ] <|
+                        if String.length content > maxLength then
+                            content
+                                |> String.left maxLength
+                                |> (\s -> s ++ "...")
+                                |> text
+                                |> el [ Font.italic ]
 
-                    else
-                        content
-                            |> text
-                            |> el [ Font.italic ]
-                ]
+                        else
+                            content
+                                |> text
+                                |> el [ Font.italic ]
+                    ]
 
         Folder name [] ->
-            text <| name ++ " []"
+            indented <| text <| name ++ " []"
 
         Folder name children ->
             let
                 header =
-                    [ text <| "folder: " ++ name ++ " [" ]
+                    [ text <| name ++ " [" ]
 
                 body =
                     List.map viewTree children
@@ -110,4 +117,4 @@ viewTree tree =
                 footer =
                     [ text "]" ]
             in
-            column [ paddingXY 10 0 ] (header ++ body ++ footer)
+            column [ indent ] (header ++ body ++ footer)
