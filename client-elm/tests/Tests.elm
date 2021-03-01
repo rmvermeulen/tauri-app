@@ -1,7 +1,9 @@
 module Tests exposing (..)
 
-import Test exposing (..)
 import Expect
+import FileTree exposing (FileTree(..), fromPaths)
+import Test exposing (..)
+
 
 
 -- Check out https://package.elm-lang.org/packages/elm-explorations/test/latest to learn more about testing in Elm!
@@ -9,14 +11,48 @@ import Expect
 
 all : Test
 all =
-    describe "A Test Suite"
-        [ test "Addition" <|
+    describe "FileTree"
+        [ test "fromPaths" <|
             \_ ->
-                Expect.equal 10 (3 + 7)
-        , test "String.left" <|
+                let
+                    result =
+                        fromPaths [ "first", "second", "third" ]
+
+                    expected =
+                        Folder "root"
+                            [ File "first" Nothing
+                            , File "second" Nothing
+                            , File "third" Nothing
+                            ]
+                in
+                Expect.equal result expected
+        , test "fromPaths 2" <|
             \_ ->
-                Expect.equal "a" (String.left 1 "abcdefg")
-        , test "This test should fail" <|
+                let
+                    result =
+                        fromPaths [ "first", "first/second" ]
+
+                    expected =
+                        Folder "root"
+                            [ Folder "first"
+                                [ File "second" Nothing
+                                ]
+                            ]
+                in
+                Expect.equal result expected
+        , test "fromPaths 3" <|
             \_ ->
-                Expect.fail "failed as expected!"
+                let
+                    result =
+                        fromPaths [ "first", "first/second", "first/second/third", "first/second/third/fourth", "first/fifth" ]
+
+                    expected =
+                        Folder "root"
+                            [ Folder "first"
+                                [ File "fifth" Nothing
+                                , Folder "second" [ Folder "third" [ File "fourth" Nothing ] ]
+                                ]
+                            ]
+                in
+                Expect.equal result expected
         ]

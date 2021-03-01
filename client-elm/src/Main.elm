@@ -10,6 +10,7 @@ import Element.Input as Input
 import FileTree exposing (FileTree(..), viewTree)
 import Framework.Color as Color
 import Framework.Spinner exposing (Spinner(..), spinner)
+import Json.Decode as Decode
 import List.Extra exposing (groupsOf)
 
 
@@ -25,11 +26,18 @@ port receiveMessage : (String -> msg) -> Sub msg
 port receiveFileList : (List String -> msg) -> Sub msg
 
 
+port receiveFileTree : (Decode.Value -> msg) -> Sub msg
+
+
 port handleError : (String -> msg) -> Sub msg
 
 
 
 ---- MODEL ----
+
+
+type alias FileInfo =
+    { path : String, dir : Bool }
 
 
 type Files
@@ -57,11 +65,6 @@ debounceConfig =
     { strategy = Debounce.later 250
     , transform = DebounceMsg
     }
-
-
-updateDebouncer : Debounce.Msg -> Debounce String -> ( Debounce String, Cmd Msg )
-updateDebouncer =
-    Debounce.update debounceConfig (Debounce.takeLast getFileList)
 
 
 
@@ -115,6 +118,7 @@ type Msg
     = ReceiveMessage String
     | SetSearchTerm String
     | ReceiveFileList (List String)
+    | ReceiveFileList Decode.Value
     | HandleError String
     | DebounceMsg Debounce.Msg
 
@@ -122,6 +126,10 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
+        updateDebouncer : Debounce.Msg -> Debounce String -> ( Debounce String, Cmd Msg )
+        updateDebouncer =
+            Debounce.update debounceConfig (Debounce.takeLast getFileList)
+
         simply m =
             ( m, Cmd.none )
     in
@@ -150,6 +158,13 @@ update msg model =
             model
                 |> setFiles (Loaded paths tree)
                 |> simply
+
+        ReceiveFileTree json ->
+            let
+                _ =
+                    Debug.log "file-tree" (Debug.toString json)
+            in
+            simply model
 
         HandleError string ->
             simply { model | mError = Just string }
@@ -242,6 +257,7 @@ subscriptions _ =
     Sub.batch
         [ receiveMessage ReceiveMessage
         , receiveFileList ReceiveFileList
+        , receiveFileTree ReceiveFileTree
         , handleError HandleError
         ]
 
