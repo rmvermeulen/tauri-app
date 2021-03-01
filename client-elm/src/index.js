@@ -23,16 +23,30 @@ if ("ports" in app) {
   } else {
     console.error("Missing Message ports");
   }
+
   if ("getFileList" in ports && "receiveResourceId" in ports) {
     const { getFileList, receiveResourceId } = ports;
     getFileList.subscribe((path) => {
       rustMessage({ cmd: "getFileList", path }, (uuid) => {
-        console.log("UUID", uuid);
         receiveResourceId.send(uuid);
       });
     });
   } else {
     console.error("Missing FileList ports");
+  }
+
+  if ("getResourceItems" in ports && "receiveResourceItems" in ports) {
+    const { getResourceItems, receiveResourceItems } = ports;
+    getResourceItems.subscribe(({ rid, amount }) => {
+      rustMessage(
+        { cmd: "getResourceItems", id: rid, amount },
+        ({ done, items }) => {
+          receiveResourceItems.send({ rid, amount, items, done });
+        }
+      );
+    });
+  } else {
+    console.error("Missing ResourceItem ports");
   }
 }
 

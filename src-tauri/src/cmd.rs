@@ -11,8 +11,9 @@ pub enum Cmd {
     callback: String,
     error: String,
   },
-  GetItems {
+  GetResourceItems {
     id: String,
+    amount: usize,
     callback: String,
     error: String,
   },

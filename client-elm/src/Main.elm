@@ -17,7 +17,10 @@ import List.Extra exposing (groupsOf)
 port getFileList : String -> Cmd msg
 
 
-port getResourceItems : ( String, Int ) -> Cmd msg
+port getResourceItems : ResourceRequest -> Cmd msg
+
+
+port receiveResourceItems : (ResourceResponse -> msg) -> Sub msg
 
 
 port receiveResourceId : (String -> msg) -> Sub msg
@@ -36,7 +39,7 @@ port handleError : (String -> msg) -> Sub msg
 type Files
     = None
     | Searching
-    | Loading String (List String)
+    | Loading ResourceResponse
     | Loaded (List String) FileTree
 
 
@@ -108,11 +111,31 @@ init =
 ---- UPDATE ----
 
 
+type alias RID =
+    String
+
+
+type alias ResourceRequest =
+    { rid : RID
+    , amount : Int
+    }
+
+
+type alias ResourceResponse =
+    { rid : RID
+    , amount : Int
+    , items : List String
+    , done : Bool
+    }
+
+
 type Msg
     = ReceiveMessage String
     | SetSearchTerm String
     | ReceiveFileList (List String)
-    | ReceiveResourceId String
+    | ReceiveResourceId RID
+    | ReceiveResourceResponse ResourceResponse
+    | SendResourceRequest ResourceRequest
     | HandleError String
     | DebounceMsg Debounce.Msg
 
@@ -153,10 +176,74 @@ update msg model =
                 |> setFiles (Loaded paths tree)
                 |> simply
 
-        ReceiveResourceId id ->
+        ReceiveResourceId rid ->
+            let
+                files =
+                    Loading
+                        { rid = rid
+                        , items = []
+                        , amount = -1
+                        , done = False
+                        }
+            in
+            ( model |> setFiles files
+            , delayCmd <| SendResourceRequest <| ResourceRequest rid 5
+            )
+
+        ReceiveResourceResponse res ->
+            let
+                files =
+                    case model.files of
+                        Loading { rid, items, amount } ->
+                            if rid == res.rid then
+                                if res.done then
+                                    let
+                                        total =
+                                            items ++ res.items
+
+                                        tree =
+                                            FileTree.fromPaths total
+                                    in
+                                    Loaded total tree
+
+                                else
+                                    Loading
+                                        { rid = rid
+                                        , items = items ++ res.items
+                                        , amount = amount
+                                        , done = res.done
+                                        }
+
+                            else
+                                Loading res
+
+                        _ ->
+                            model.files
+            in
+            ( model |> setFiles files
+            , Delay.after 100 Millisecond <|
+                SendResourceRequest
+                    { rid = res.rid
+                    , amount = res.amount
+                    }
+            )
+
+        SendResourceRequest req ->
+            let
+                isValid =
+                    case model.files of
+                        Loading { rid } ->
+                            req.rid == rid
+
+                        _ ->
+                            False
+            in
             ( model
-                |> setFiles (Loading id [])
-            , delayCmd <| getResourceItems (id, 5)
+            , if isValid then
+                getResourceItems req
+
+              else
+                Cmd.none
             )
 
         HandleError string ->
@@ -175,28 +262,6 @@ update msg model =
 
 
 ---- VIEW ----
-
-
-exampleFileTree : FileTree
-exampleFileTree =
-    Folder "Root"
-        [ Folder "Nested"
-            [ File "foo" (Just "lorem ipsum etc")
-            , File "foo"
-                (Just """
-exampleFileTree : Tree
-exampleFileTree =
-    Folder "Root"
-        [ Folder "Nested" [
-            File "foo" (Just "lorem ipsum etc"),
-            File "foo" (Just "lorem ipsum etc"),
-        ]
-        , File ".gitignore" (Just "node_modules")
-        ]
-""")
-            ]
-        , File ".gitignore" (Just "node_modules")
-        ]
 
 
 view : Model -> Element Msg
@@ -221,7 +286,7 @@ view model =
             Searching ->
                 spinner ThreeCircles 24 Color.black
 
-            Loading uuid incompleteResults ->
+            Loading _ ->
                 spinner ThreeCircles 24 Color.green
 
             Loaded files tree ->
@@ -253,6 +318,7 @@ subscriptions _ =
     Sub.batch
         [ receiveFileList ReceiveFileList
         , receiveResourceId ReceiveResourceId
+        , receiveResourceItems ReceiveResourceResponse
         , handleError HandleError
         ]
 

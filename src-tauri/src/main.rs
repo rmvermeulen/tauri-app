@@ -10,26 +10,50 @@ use uuid::Uuid;
 
 mod cmd;
 
+#[derive(serde::Serialize)]
+struct ResourceResponse {
+  items: Vec<String>,
+  done: bool,
+}
+
 fn main() {
-  let cache = Arc::new(Mutex::new(HashMap::new()));
+  let cache: HashMap<Uuid, Vec<String>> = HashMap::new();
+  let cache = Arc::new(Mutex::new(cache));
   tauri::AppBuilder::new()
     .invoke_handler(move |_webview, arg| {
-      let mut cache = cache.clone();
+      let cache = cache.clone();
       use cmd::Cmd::*;
       match serde_json::from_str(arg) {
         Err(e) => Err(e.to_string()),
         Ok(command) => {
           match command {
-            GetItems {
+            GetResourceItems {
               id,
+              amount,
               callback,
               error,
             } => {
-              let fetchItems = move || {
-                let results: Vec<String> = vec![];
-                Ok(results)
+              println!("GetResourceItems {}", id);
+              let uuid: Uuid = Uuid::parse_str(&id).unwrap();
+              let fetch_items = move || {
+                let mut map = cache.lock().unwrap();
+                let items: Vec<String> = match map.get(&uuid) {
+                  Some(data) => data.to_vec(),
+                  None => vec![]
+                };
+                if items.len() > amount {
+                  let (items, remainder) = items.split_at(5);
+                  map.insert(uuid, remainder.to_vec());
+                  Ok(ResourceResponse {
+                    done: false,
+                    items: items.to_vec(),
+                  })
+                } else {
+                  map.remove(&uuid);
+                  Ok(ResourceResponse { done: true, items })
+                }
               };
-              tauri::execute_promise(_webview, fetchItems, callback, error);
+              tauri::execute_promise(_webview, fetch_items, callback, error);
             }
             GetFileList {
               path,
