@@ -36,6 +36,11 @@ port handleError : (String -> msg) -> Sub msg
 ---- MODEL ----
 
 
+batchSize : Int
+batchSize =
+    16
+
+
 type Files
     = None
     | Searching
@@ -187,7 +192,9 @@ update msg model =
                         }
             in
             ( model |> setFiles files
-            , delayCmd <| SendResourceRequest <| ResourceRequest rid 5
+            , delayCmd <|
+                SendResourceRequest <|
+                    ResourceRequest rid batchSize
             )
 
         ReceiveResourceResponse res ->
@@ -273,40 +280,76 @@ view model =
 
             Nothing ->
                 text "No messages yet"
-        , Input.text []
+        , Input.text [ width (fill |> maximum 250) ]
             { label = Input.labelLeft [] <| text "search"
             , onChange = SetSearchTerm
             , text = model.searchTerm
             , placeholder = Nothing
             }
-        , case model.files of
-            None ->
-                none
-
-            Searching ->
-                spinner ThreeCircles 24 Color.black
-
-            Loading _ ->
-                spinner ThreeCircles 24 Color.green
-
-            Loaded files tree ->
-                if List.isEmpty files then
-                    el [ Font.italic ] <| text "no results."
-
-                else
-                    column [ Font.family [ Font.monospace ] ]
-                        [ files
-                            |> List.sortBy String.length
-                            |> List.map text
-                            |> column []
-                        , tree
-                            |> viewTree
-                            |> el [ padding 16, Background.color Color.muted ]
-                        ]
+        , viewFiles model.files
         , model.mError
             |> Maybe.map text
             |> Maybe.withDefault none
         ]
+
+
+viewFiles : Files -> Element Msg
+viewFiles fileData =
+    let
+        scrollView =
+            el [ width fill, height (fill |> maximum 500) ]
+                << column
+                    [ width fill
+                    , height (fill |> maximum 500)
+                    , clipY
+                    , scrollbarY
+                    ]
+
+        resultsLabel items =
+            let
+                amount =
+                    List.length items
+
+                rc =
+                    String.fromInt amount
+            in
+            if amount == 1 then
+                rc ++ " result"
+
+            else
+                rc ++ " results"
+    in
+    case fileData of
+        None ->
+            none
+
+        Searching ->
+            spinner ThreeCircles 24 Color.black
+
+        Loading { items } ->
+            column []
+                [ row [ spacing 10 ]
+                    [ spinner ThreeCircles 24 Color.green
+                    , text <| resultsLabel items
+                    ]
+                , items |> List.map text |> scrollView
+                ]
+
+        Loaded files tree ->
+            if List.isEmpty files then
+                el [ Font.italic ] <| text "no results."
+
+            else
+                column [ Font.family [ Font.monospace ] ]
+                    [ text <| resultsLabel files
+                    , files
+                        |> List.sortBy String.length
+                        |> List.map text
+                        |> scrollView
+                    , tree
+                        |> viewTree
+                        |> el [ padding 16, Background.color Color.muted ]
+                    ]
 
 
 
