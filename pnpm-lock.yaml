@@ -1,4 +1,5 @@
 devDependencies:
+  elm: 0.19.1-5
   tauri: 0.14.1
 lockfileVersion: 5.2
 packages:
@@ -1204,6 +1205,16 @@ packages:
     dev: true
     resolution:
       integrity: sha1-OoOpBOVDUyh4dMVkt1SThoSamMk=
+  /elm/0.19.1-5:
+    dependencies:
+      request: 2.88.2
+    dev: true
+    engines:
+      node: '>=7.0.0'
+    hasBin: true
+    requiresBuild: true
+    resolution:
+      integrity: sha512-dyBoPvFiNLvxOStQJdyq28gZEjS/enZXdZ5yyCtNtDEMbFJJVQq4pYNRKvhrKKdlxNot6d96iQe1uczoqO5yvA==
   /emoji-regex/7.0.3:
     dev: true
     resolution:
@@ -4610,4 +4621,5 @@ packages:
     resolution:
       integrity: sha512-+aybvXv/xafL6I67uSH5yLHrSy4/OaSOV9tniw4yZFIHpINXUcctVHE/WzHxOONrL2GHzJ8Fd4iDrNyaS6TVbg==
 specifiers:
+  elm: ^0.19.1-5
   tauri: ^0.14.1

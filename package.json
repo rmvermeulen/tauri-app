@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "elm": "^0.19.1-5",
     "tauri": "^0.14.1"
   }
 }
