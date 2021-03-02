@@ -9,49 +9,55 @@ import Framework.Color as Color
 import List
 
 
-rootFolder =
+empty =
     Folder "root" []
+
+
+insertNonEmpty : String -> List String -> FileTree -> FileTree
+insertNonEmpty segment rest tree =
+    case tree of
+        File name _ ->
+            -- convert file into folder
+            Folder name [ File segment Nothing ]
+
+        Folder name paths ->
+            let
+                ( mExistingNode, others ) =
+                    paths
+                        |> List.partition (nodeName >> (==) segment)
+                        |> Tuple.mapFirst List.head
+            in
+            case mExistingNode of
+                Just node ->
+                    -- insert the rest of the segments in the found node
+                    Folder name (others ++ [ insertSegments rest node ])
+
+                Nothing ->
+                    -- create new file in the current folder
+                    Folder name (paths ++ [ File segment Nothing ])
+
+
+insertSegments : List String -> FileTree -> FileTree
+insertSegments segments tree =
+    case segments of
+        [] ->
+            tree
+
+        segment :: rest ->
+            insertNonEmpty segment rest tree
+
+
+extend : List String -> FileTree -> FileTree
+extend files tree =
+    files
+        |> List.sort
+        |> List.map (String.split "/")
+        |> List.foldl insertSegments tree
 
 
 fromPaths : List String -> FileTree
 fromPaths files =
-    let
-        insertNonEmpty : String -> List String -> FileTree -> FileTree
-        insertNonEmpty segment rest tree =
-            case tree of
-                File name _ ->
-                    -- convert file into folder
-                    Folder name [ File segment Nothing ]
-
-                Folder name paths ->
-                    let
-                        ( mExistingNode, others ) =
-                            paths
-                                |> List.partition (nodeName >> (==) segment)
-                                |> Tuple.mapFirst List.head
-                    in
-                    case mExistingNode of
-                        Just node ->
-                            -- insert the rest of the segments in the found node
-                            Folder name (others ++ [ insertSegments rest node ])
-
-                        Nothing ->
-                            -- create new file in the current folder
-                            Folder name (paths ++ [ File segment Nothing ])
-
-        insertSegments : List String -> FileTree -> FileTree
-        insertSegments segments tree =
-            case segments of
-                [] ->
-                    tree
-
-                segment :: rest ->
-                    insertNonEmpty segment rest tree
-    in
-    files
-        |> List.sort
-        |> List.map (String.split "/")
-        |> List.foldl insertSegments rootFolder
+    extend files empty
 
 
 nodeName : FileTree -> String

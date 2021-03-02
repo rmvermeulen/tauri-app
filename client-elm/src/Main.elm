@@ -44,7 +44,7 @@ batchSize =
 type Files
     = None
     | Searching
-    | Loading ResourceResponse
+    | Loading ResourceResponse FileTree
     | Loaded (List String) FileTree
 
 
@@ -190,6 +190,7 @@ update msg model =
                         , amount = -1
                         , done = False
                         }
+                        FileTree.empty
             in
             ( model |> setFiles files
             , delayCmd <|
@@ -201,17 +202,18 @@ update msg model =
             let
                 files =
                     case model.files of
-                        Loading { rid, items, amount } ->
+                        Loading { rid, items, amount } tree ->
+                            let
+                                updatedTree =
+                                    FileTree.extend items tree
+                            in
                             if rid == res.rid then
                                 if res.done then
                                     let
                                         total =
                                             items ++ res.items
-
-                                        tree =
-                                            FileTree.fromPaths total
                                     in
-                                    Loaded total tree
+                                    Loaded total updatedTree
 
                                 else
                                     Loading
@@ -220,9 +222,10 @@ update msg model =
                                         , amount = amount
                                         , done = res.done
                                         }
+                                        updatedTree
 
                             else
-                                Loading res
+                                Loading res updatedTree
 
                         _ ->
                             model.files
@@ -239,7 +242,7 @@ update msg model =
             let
                 isValid =
                     case model.files of
-                        Loading { rid } ->
+                        Loading { rid } _ ->
                             req.rid == rid
 
                         _ ->
@@ -326,13 +329,16 @@ viewFiles fileData =
         Searching ->
             spinner ThreeCircles 24 Color.black
 
-        Loading { items } ->
+        Loading { items } tree ->
             column []
                 [ row [ spacing 10 ]
                     [ spinner ThreeCircles 24 Color.green
                     , text <| resultsLabel items
                     ]
                 , items |> List.map text |> scrollView
+                , tree
+                    |> viewTree
+                    |> el [ padding 16, Background.color Color.muted ]
                 ]
 
         Loaded files tree ->
