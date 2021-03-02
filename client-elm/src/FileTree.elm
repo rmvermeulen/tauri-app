@@ -1,6 +1,5 @@
-module FileTree exposing (..)
+module FileTree exposing (FileTree(..), create, empty, extend, viewTree)
 
-import Dict exposing (Dict)
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -9,6 +8,7 @@ import Framework.Color as Color
 import List
 
 
+empty : FileTree
 empty =
     Folder "root" []
 
@@ -47,16 +47,20 @@ insertSegments segments tree =
             insertNonEmpty segment rest tree
 
 
+insertPath : String -> FileTree -> FileTree
+insertPath path tree =
+    insertSegments (String.split "/" path) tree
+
+
 extend : List String -> FileTree -> FileTree
 extend files tree =
     files
         |> List.sort
-        |> List.map (String.split "/")
-        |> List.foldl insertSegments tree
+        |> List.foldl insertPath tree
 
 
-fromPaths : List String -> FileTree
-fromPaths files =
+create : List String -> FileTree
+create files =
     extend files empty
 
 

@@ -175,7 +175,7 @@ update msg model =
         ReceiveFileList paths ->
             let
                 tree =
-                    FileTree.fromPaths paths
+                    FileTree.create paths
             in
             model
                 |> setFiles (Loaded paths tree)

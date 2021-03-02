@@ -1,7 +1,7 @@
 module Tests exposing (..)
 
 import Expect
-import FileTree exposing (FileTree(..), fromPaths)
+import FileTree exposing (FileTree(..), create, extend)
 import Test exposing (..)
 
 
@@ -12,11 +12,11 @@ import Test exposing (..)
 all : Test
 all =
     describe "FileTree"
-        [ test "fromPaths" <|
+        [ test "create" <|
             \_ ->
                 let
                     result =
-                        fromPaths [ "first", "second", "third" ]
+                        create [ "first", "second", "third" ]
 
                     expected =
                         Folder "root"
@@ -26,11 +26,11 @@ all =
                             ]
                 in
                 Expect.equal result expected
-        , test "fromPaths 2" <|
+        , test "create nested" <|
             \_ ->
                 let
                     result =
-                        fromPaths [ "first", "first/second" ]
+                        create [ "first", "first/second" ]
 
                     expected =
                         Folder "root"
@@ -40,11 +40,11 @@ all =
                             ]
                 in
                 Expect.equal result expected
-        , test "fromPaths 3" <|
+        , test "create nested deeper" <|
             \_ ->
                 let
                     result =
-                        fromPaths [ "first", "first/second", "first/second/third", "first/second/third/fourth", "first/fifth" ]
+                        create [ "first", "first/second", "first/second/third", "first/second/third/fourth", "first/fifth" ]
 
                     expected =
                         Folder "root"
@@ -53,6 +53,19 @@ all =
                                 , Folder "second" [ Folder "third" [ File "fourth" Nothing ] ]
                                 ]
                             ]
+                in
+                Expect.equal result expected
+        , test "extend" <|
+            \_ ->
+                let
+                    tree =
+                        create [ "first" ]
+
+                    result =
+                        extend [ "first/second" ] tree
+
+                    expected =
+                        Folder "root" [ Folder "first" [ File "second" Nothing ] ]
                 in
                 Expect.equal result expected
         ]
