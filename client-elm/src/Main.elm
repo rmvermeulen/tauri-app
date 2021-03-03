@@ -5,6 +5,7 @@ import Debounce exposing (Debounce)
 import Delay exposing (TimeUnit(..))
 import Element exposing (..)
 import Element.Background as Background
+import Element.Border as Border
 import Element.Font as Font
 import Element.Input as Input
 import FileTree exposing (FileTree(..), viewTree)
@@ -273,7 +274,7 @@ update msg model =
 
 view : Model -> Element Msg
 view model =
-    column []
+    column [ width fill ]
         [ case model.mMessage of
             Just message ->
                 text <| "Received @message: '" ++ message ++ "'"
@@ -293,6 +294,36 @@ view model =
         ]
 
 
+viewFileInfo : FileInfo -> Element Msg
+viewFileInfo { path, name, tags } =
+    let
+        attrs =
+            [ width fill, Font.alignLeft, clipX, padding 4, spacing 4 ]
+
+        info =
+            row [ width fill, spacing 8 ]
+                [ name |> text |> el [ Font.color Color.blue, clipX, width (fillPortion 1) ]
+                , el [ clipX, width (fillPortion 2) ] <|
+                    if List.isEmpty tags then
+                        text "untagged"
+
+                    else
+                        tags
+                            |> List.map text
+                            |> row [ width fill, padding 8, Border.rounded 4, Font.color Color.orange ]
+                ]
+    in
+    if path == name then
+        el attrs
+            info
+
+    else
+        column attrs
+            [ path |> text |> el [ Font.color Color.green, clipX, width fill ]
+            , info
+            ]
+
+
 viewFiles : Files -> Element Msg
 viewFiles fileData =
     let
@@ -303,6 +334,7 @@ viewFiles fileData =
                     , height (fill |> maximum 500)
                     , clipY
                     , scrollbarY
+                    , spacing 4
                     ]
 
         resultsLabel items =
@@ -327,14 +359,14 @@ viewFiles fileData =
             spinner ThreeCircles 24 Color.black
 
         Loading { items } tree ->
-            column []
-                [ row [ spacing 10 ]
+            column [ width fill ]
+                [ row [ spacing 10, width fill ]
                     [ spinner ThreeCircles 24 Color.green
                     , text <| resultsLabel items
                     ]
                 , items
-                    |> List.map Debug.toString
-                    |> List.map text
+                    |> List.sortBy (.path >> String.length)
+                    |> List.map viewFileInfo
                     |> scrollView
                 , tree
                     |> viewTree
@@ -346,12 +378,11 @@ viewFiles fileData =
                 el [ Font.italic ] <| text "no results."
 
             else
-                column [ Font.family [ Font.monospace ] ]
+                column [ width fill, Font.family [ Font.monospace ] ]
                     [ text <| resultsLabel files
                     , files
-                        |> List.map .path
-                        |> List.sortBy String.length
-                        |> List.map text
+                        |> List.sortBy (.path >> String.length)
+                        |> List.map viewFileInfo
                         |> scrollView
                     , tree
                         |> viewTree
