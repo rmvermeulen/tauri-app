@@ -11,13 +11,20 @@ use uuid::Uuid;
 mod cmd;
 
 #[derive(serde::Serialize)]
-struct ResourceResponse {
-  items: Vec<String>,
+struct ResourceResponse<T> {
+  items: Vec<T>,
   done: bool,
 }
 
+#[derive(serde::Serialize, Clone)]
+struct FileInfo {
+  path: String,
+  name: String,
+  tags: Vec<String>,
+}
+
 fn main() {
-  let cache: HashMap<Uuid, Vec<String>> = HashMap::new();
+  let cache: HashMap<Uuid, Vec<FileInfo>> = HashMap::new();
   let cache = Arc::new(Mutex::new(cache));
   tauri::AppBuilder::new()
     .invoke_handler(move |_webview, arg| {
@@ -27,7 +34,7 @@ fn main() {
         Err(e) => Err(e.to_string()),
         Ok(command) => {
           match command {
-            GetResourceItems {
+            LoadResource {
               id,
               amount,
               callback,
@@ -37,9 +44,9 @@ fn main() {
               let uuid: Uuid = Uuid::parse_str(&id).unwrap();
               let fetch_items = move || {
                 let mut map = cache.lock().unwrap();
-                let items: Vec<String> = match map.get(&uuid) {
+                let items: Vec<FileInfo> = match map.get(&uuid) {
                   Some(data) => data.to_vec(),
-                  None => vec![]
+                  None => vec![],
                 };
                 if items.len() > amount {
                   let (items, remainder) = items.split_at(5);
@@ -55,25 +62,36 @@ fn main() {
               };
               tauri::execute_promise(_webview, fetch_items, callback, error);
             }
-            GetFileList {
-              path,
+            SearchGlob {
+              pattern,
               callback,
               error,
             } => {
-              println!("elm:getFileList -> {:?}", path);
+              println!("elm:getFileList -> {:?}", pattern);
               tauri::execute_promise(
                 _webview,
                 move || {
-                  use glob::glob;
-
-                  let results: Vec<String> = glob(&path)
+                  let results: Vec<FileInfo> = glob::glob(&pattern)
                     .expect("Failed to read glob pattern")
                     .filter_map(|result| {
                       result
                         .ok()
                         .map(|buffer| buffer.into_os_string().into_string().ok())
                     })
-                    .filter_map(|item| item)
+                    .filter_map(|item| {
+                      item.map(|path: String| {
+                        let segments: Vec<&str> = path.split("/").collect();
+                        let name = match segments.last() {
+                          Some(s) => s.to_string(),
+                          None => String::from(path.clone()),
+                        };
+                        FileInfo {
+                          path: path,
+                          name: name,
+                          tags: vec![],
+                        }
+                      })
+                    })
                     .collect();
                   let id = Uuid::new_v4();
                   match cache.lock() {

@@ -10,23 +10,18 @@ import Element.Input as Input
 import FileTree exposing (FileTree(..), viewTree)
 import Framework.Color as Color
 import Framework.Spinner exposing (Spinner(..), spinner)
-import Json.Decode as Decode
-import List.Extra exposing (groupsOf)
 
 
-port getFileList : String -> Cmd msg
+port searchGlob : String -> Cmd msg
 
 
-port getResourceItems : ResourceRequest -> Cmd msg
+port loadResource : ResourceRequest -> Cmd msg
 
 
-port receiveResourceItems : (ResourceResponse -> msg) -> Sub msg
+port receiveFiles : (ResourceResponse FileInfo -> msg) -> Sub msg
 
 
 port receiveResourceId : (String -> msg) -> Sub msg
-
-
-port receiveFileList : (List String -> msg) -> Sub msg
 
 
 port handleError : (String -> msg) -> Sub msg
@@ -41,11 +36,18 @@ batchSize =
     16
 
 
+type alias FileInfo =
+    { path : String
+    , name : String
+    , tags : List String
+    }
+
+
 type Files
     = None
     | Searching
-    | Loading ResourceResponse FileTree
-    | Loaded (List String) FileTree
+    | Loading (ResourceResponse FileInfo) FileTree
+    | Loaded (List FileInfo) FileTree
 
 
 type alias Model =
@@ -123,13 +125,14 @@ type alias RID =
 type alias ResourceRequest =
     { rid : RID
     , amount : Int
+    , resPort : String
     }
 
 
-type alias ResourceResponse =
+type alias ResourceResponse item =
     { rid : RID
     , amount : Int
-    , items : List String
+    , items : List item
     , done : Bool
     }
 
@@ -137,9 +140,8 @@ type alias ResourceResponse =
 type Msg
     = ReceiveMessage String
     | SetSearchTerm String
-    | ReceiveFileList (List String)
     | ReceiveResourceId RID
-    | ReceiveResourceResponse ResourceResponse
+    | ReceiveResourceResponse (ResourceResponse FileInfo)
     | SendResourceRequest ResourceRequest
     | HandleError String
     | DebounceMsg Debounce.Msg
@@ -150,7 +152,7 @@ update msg model =
     let
         updateDebouncer : Debounce.Msg -> Debounce String -> ( Debounce String, Cmd Msg )
         updateDebouncer =
-            Debounce.update debounceConfig (Debounce.takeLast getFileList)
+            Debounce.update debounceConfig (Debounce.takeLast searchGlob)
 
         simply m =
             ( m, Cmd.none )
@@ -172,15 +174,6 @@ update msg model =
             , cmd
             )
 
-        ReceiveFileList paths ->
-            let
-                tree =
-                    FileTree.create paths
-            in
-            model
-                |> setFiles (Loaded paths tree)
-                |> simply
-
         ReceiveResourceId rid ->
             let
                 files =
@@ -195,7 +188,7 @@ update msg model =
             ( model |> setFiles files
             , delayCmd <|
                 SendResourceRequest <|
-                    ResourceRequest rid batchSize
+                    ResourceRequest rid batchSize "receiveFiles"
             )
 
         ReceiveResourceResponse res ->
@@ -204,8 +197,11 @@ update msg model =
                     case model.files of
                         Loading { rid, items, amount } tree ->
                             let
+                                paths =
+                                    res.items |> List.map .path
+
                                 updatedTree =
-                                    FileTree.extend items tree
+                                    FileTree.extend paths tree
                             in
                             if rid == res.rid then
                                 if res.done then
@@ -235,6 +231,7 @@ update msg model =
                 SendResourceRequest
                     { rid = res.rid
                     , amount = res.amount
+                    , resPort = "receiveFiles"
                     }
             )
 
@@ -250,7 +247,7 @@ update msg model =
             in
             ( model
             , if isValid then
-                getResourceItems req
+                loadResource req
 
               else
                 Cmd.none
@@ -335,7 +332,10 @@ viewFiles fileData =
                     [ spinner ThreeCircles 24 Color.green
                     , text <| resultsLabel items
                     ]
-                , items |> List.map text |> scrollView
+                , items
+                    |> List.map Debug.toString
+                    |> List.map text
+                    |> scrollView
                 , tree
                     |> viewTree
                     |> el [ padding 16, Background.color Color.muted ]
@@ -349,6 +349,7 @@ viewFiles fileData =
                 column [ Font.family [ Font.monospace ] ]
                     [ text <| resultsLabel files
                     , files
+                        |> List.map .path
                         |> List.sortBy String.length
                         |> List.map text
                         |> scrollView
@@ -365,9 +366,8 @@ viewFiles fileData =
 subscriptions : Model -> Sub Msg
 subscriptions _ =
     Sub.batch
-        [ receiveFileList ReceiveFileList
-        , receiveResourceId ReceiveResourceId
-        , receiveResourceItems ReceiveResourceResponse
+        [ receiveResourceId ReceiveResourceId
+        , receiveFiles ReceiveResourceResponse
         , handleError HandleError
         ]
 

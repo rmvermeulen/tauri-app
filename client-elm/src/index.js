@@ -15,38 +15,33 @@ if ("ports" in app) {
 
   const rustMessage = (msg, cb) => promisified(msg).then(cb).catch(handleError);
 
-  if ("sendMessage" in ports && "receiveMessage" in ports) {
-    const { sendMessage, receiveMessage } = ports;
-    sendMessage.subscribe((message) => {
-      rustMessage({ cmd: "message", message }, receiveMessage.send);
-    });
-  } else {
-    console.error("Missing Message ports");
-  }
-
-  if ("getFileList" in ports && "receiveResourceId" in ports) {
-    const { getFileList, receiveResourceId } = ports;
-    getFileList.subscribe((path) => {
-      rustMessage({ cmd: "getFileList", path }, (uuid) => {
+  if ("searchGlob" in ports && "receiveResourceId" in ports) {
+    const { searchGlob, receiveResourceId } = ports;
+    searchGlob.subscribe((pattern) => {
+      rustMessage({ cmd: "searchGlob", pattern }, (uuid) => {
         receiveResourceId.send(uuid);
       });
     });
   } else {
-    console.error("Missing FileList ports");
+    console.error("Missing searchGlob/receiveResourceId ports");
   }
 
-  if ("getResourceItems" in ports && "receiveResourceItems" in ports) {
-    const { getResourceItems, receiveResourceItems } = ports;
-    getResourceItems.subscribe(({ rid, amount }) => {
-      rustMessage(
-        { cmd: "getResourceItems", id: rid, amount },
-        ({ done, items }) => {
-          receiveResourceItems.send({ rid, amount, items, done });
-        }
-      );
+  if ("loadResource" in ports) {
+    const { loadResource } = ports;
+    loadResource.subscribe(({ rid, amount, resPort }) => {
+      if (resPort in ports) {
+        rustMessage(
+          { cmd: "loadResource", id: rid, amount },
+          ({ done, items }) => {
+            ports[resPort].send({ rid, amount, items, done });
+          }
+        );
+      } else {
+        console.error(`Missing resPort [${resPort}]`);
+      }
     });
   } else {
-    console.error("Missing ResourceItem ports");
+    console.error("Missing loadResource port");
   }
 }
 
