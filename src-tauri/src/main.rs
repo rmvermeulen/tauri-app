@@ -6,9 +6,11 @@ use anyhow::anyhow;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::sync::Mutex;
+use tokio;
 use uuid::Uuid;
 
 mod cmd;
+mod db;
 
 #[derive(serde::Serialize)]
 struct ResourceResponse<T> {
@@ -23,7 +25,12 @@ struct FileInfo {
   tags: Vec<String>,
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
+  match db::do_database_thing().await {
+    Ok(result) => println!("database thing done! {:?}", result),
+    Err(msg) => println!("db: error occurred {:?}", msg),
+  };
   let cache: HashMap<Uuid, Vec<FileInfo>> = HashMap::new();
   let cache = Arc::new(Mutex::new(cache));
   tauri::AppBuilder::new()
